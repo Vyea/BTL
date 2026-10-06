@@ -1,5 +1,11 @@
+html {
+    height: 100%;
+}
 body {
     margin: 0 auto;
     width: 100%;
-    background-image: url("../images/background-login.jpg");
+    background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.4)),url("../images/background-login.jpg");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
 }
