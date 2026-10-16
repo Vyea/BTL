@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tra cứu sách - Thư viện</title>
+    <link rel="stylesheet" href="css/catalog.css">
+</head>
+<body>
+    <main class="page">
+        <aside class="sidebar">
+            <h2>Thư viện</h2>
+            <p class="sidebar-description">Quản lý sách và mượn trả</p>
+            <nav>
+                <a href="catalog.html" class="nav-link active">Tra cứu sách</a>
+                <a href="borrow-and-return.html" class="nav-link">Mượn và trả sách</a>
+            </nav>
+        </aside>
+        <section class="content">
+            <h1>Tra cứu sách</h1>
+            <p class="intro">Tìm sách theo tên sách, tác giả hoặc thể loại.</p>
+            <label for="searchInput">Từ khóa tìm kiếm</label>
+            <input type="text" id="searchInput" placeholder="Ví dụ: Dế Mèn, Tô Hoài, Văn học...">
+            <p id="resultCount" class="result-count">Danh sách sách</p>
+            <div id="bookList" class="book-list"></div>
+            <p id="noResult" class="no-result" hidden>Không tìm thấy sách phù hợp.</p>
+            <section class="book-summary" aria-label="Thống kê sách">
+                <div class="summary-box">
+                    <span class="summary-label">Tổng số sách</span>
+                    <strong id="totalBooks" aria-live="polite">0</strong>
+                </div>
+                <div class="summary-box available-box">
+                    <span class="summary-label">Sách còn sẵn</span>
+                    <strong id="availableBooks" aria-live="polite">0</strong>
+                </div>
+                <div class="summary-box borrowed-box">
+                    <span class="summary-label">Sách đã mượn</span>
+                    <strong id="borrowedBooks" aria-live="polite">0</strong>
+                </div>
+            </section>
+        </section>
+    </main>
+    <script src="js/catalog.js"></script>
+</body>
+</html>
