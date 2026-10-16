@@ -46,7 +46,6 @@ function displayBooks(bookArray) {
         if (book.status !== "Còn sách") {
             status.className += " unavailable";
         }
-
         card.appendChild(title);
         card.appendChild(author);
         card.appendChild(category);

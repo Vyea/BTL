@@ -128,25 +128,20 @@ body {
     .page {
         flex-direction: column;
     }
-
     .sidebar {
         width: 100%;
         padding: 20px;
     }
-
     .sidebar-description {
         margin-bottom: 16px;
     }
-
     .sidebar nav {
         flex-direction: row;
         flex-wrap: wrap;
     }
-
     .content {
         padding: 22px 16px;
     }
-
     .book-list {
         grid-template-columns: 1fr;
     }
