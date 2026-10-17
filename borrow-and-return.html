@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mượn và Trả Sách - Thư Viện</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 font-sans text-slate-800 antialiased min-h-screen flex">
+
+    <!-- Sidebar bên trái -->
+    <aside class="w-64 bg-[#2C3E50] text-white flex-shrink-0 min-h-screen p-6 flex flex-col justify-between">
+        <div>
+            <div class="mb-8">
+                <h1 class="text-2xl font-bold tracking-wide">Thư viện</h1>
+                <p class="text-xs text-slate-300 mt-1">Quản lý sách và mượn trả</p>
+            </div>
+            <nav class="space-y-2">
+                <a href="catalog.html" class="flex items-center px-4 py-3 text-slate-300 hover:bg-[#34495E] rounded-lg transition font-medium">
+                    Tra cứu sách
+                </a>
+                <a href="borrow-and-return.html" class="flex items-center px-4 py-3 bg-[#3498DB] text-white font-medium rounded-lg shadow-sm transition">
+                    Mượn và trả sách
+                </a>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- Nội dung chính -->
+    <main class="flex-1 p-8 overflow-y-auto">
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold text-slate-800">Quản lý mượn và trả sách</h2>
+            <p class="text-sm text-slate-500 mt-1">Tạo phiếu mượn mới và theo dõi trạng thái trả sách của đọc giả.</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Form Lập phiếu mượn -->
+            <section class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm lg:col-span-1 h-fit">
+                <h3 class="text-base font-bold text-slate-800 mb-4 pb-3 border-b border-slate-100">Lập Phiếu Mượn Sách</h3>
+                <form id="borrowForm" onsubmit="addBorrowRecord(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Mã Sinh Viên / Đọc Giả</label>
+                        <input type="text" id="studentId" required class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3498DB] transition">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Tên Sách Mượn</label>
+                        <input type="text" id="bookName" required class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3498DB] transition">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Ngày Mượn</label>
+                        <input type="date" id="borrowDate" required class="w-full border border-slate-300 rounded-lg p-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#3498DB]">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Ngày Hẹn Trả</label>
+                        <input type="date" id="dueDate" required class="w-full border border-slate-300 rounded-lg p-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#3498DB]">
+                    </div>
+                    <button type="submit" class="w-full bg-[#3498DB] text-white py-2.5 rounded-lg font-medium hover:bg-[#2980B9] transition text-sm shadow-sm">Xác Nhận Cho Mượn</button>
+                </form>
+            </section>
+
+            <!-- Bảng Danh sách phiếu mượn -->
+            <section class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm lg:col-span-2">
+                <h3 class="text-base font-bold text-slate-800 mb-4 pb-3 border-b border-slate-100">Danh Sách Phiếu Mượn</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100/80 text-slate-700 text-xs font-semibold uppercase tracking-wider">
+                                <th class="p-3 rounded-l-lg">Mã SV</th>
+                                <th class="p-3">Tên Sách</th>
+                                <th class="p-3">Ngày Mượn</th>
+                                <th class="p-3">Hẹn Trả</th>
+                                <th class="p-3">Trạng Thái</th>
+                                <th class="p-3 rounded-r-lg">Thao Tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="borrowTableBody" class="text-sm text-slate-600 divide-y divide-slate-100">
+                            <tr id="emptyRow">
+                                <td colspan="6" class="p-4 text-center text-slate-400 text-xs italic">Chưa có phiếu mượn nào được lập.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- JS Xử lý dữ liệu -->
+    <script>
+        // Tự động điền ngày mượn là hôm nay
+        document.getElementById('borrowDate').valueAsDate = new Date();
+
+        function addBorrowRecord(event) {
+            // Ngăn trình duyệt tự tải lại trang
+            event.preventDefault();
+
+            // 1. Lấy dữ liệu từ form
+            const studentId = document.getElementById('studentId').value;
+            const bookName = document.getElementById('bookName').value;
+            const borrowDate = document.getElementById('borrowDate').value;
+            const dueDate = document.getElementById('dueDate').value;
+
+            // 2. Ẩn dòng thông báo danh sách trống
+            const emptyRow = document.getElementById('emptyRow');
+            if (emptyRow) {
+                emptyRow.style.display = 'none';
+            }
+
+            // 3. Tạo dòng mới trong bảng
+            const tableBody = document.getElementById('borrowTableBody');
+            const newRow = document.createElement('tr');
+            newRow.className = 'border-t border-slate-100';
+            
+            newRow.innerHTML = `
+                <td class="p-3 font-medium text-slate-800">${studentId}</td>
+                <td class="p-3 font-medium">${bookName}</td>
+                <td class="p-3 text-xs">${borrowDate}</td>
+                <td class="p-3 text-xs">${dueDate}</td>
+                <td class="p-3 status-cell"><span class="bg-amber-100 text-amber-800 px-2.5 py-1 rounded-md text-xs font-semibold">Đang mượn</span></td>
+                <td class="p-3">
+                    <button type="button" onclick="returnBook(this)" class="bg-emerald-600 text-white px-3 py-1 rounded-md text-xs hover:bg-emerald-700 transition font-medium">Đã trả</button>
+                </td>
+            `;
+
+            // Đưa dòng mới lên đầu bảng
+            tableBody.prepend(newRow);
+            
+            // Xóa nội dung vừa nhập ở các ô nhập liệu
+            document.getElementById('studentId').value = '';
+            document.getElementById('bookName').value = '';
+            document.getElementById('dueDate').value = '';
+        }
+
+        function returnBook(button) {
+            const row = button.closest('tr');
+            const statusCell = row.querySelector('.status-cell');
+            statusCell.innerHTML = `<span class="bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-md text-xs font-semibold">Đã trả</span>`;
+            button.disabled = true;
+            button.className = "bg-slate-100 text-slate-400 px-3 py-1 rounded-md text-xs cursor-not-allowed font-medium";
+            button.innerText = "Đã hoàn tất";
+        }
+    </script>
+</body>
+</html>
