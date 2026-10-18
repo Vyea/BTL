@@ -14,6 +14,9 @@ body {
     min-height: 100vh;
 }
 .sidebar {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
     width: 260px;
     flex-shrink: 0;
     padding: 28px 20px;
@@ -41,6 +44,10 @@ body {
     color: white;
     text-decoration: none;
 }
+.logout-link {
+    margin-top: auto;
+}
+
 .nav-link:hover,
 .nav-link.active {
     background-color: #3498db;
@@ -128,6 +135,7 @@ body {
         flex-direction: column;
     }
     .sidebar {
+        min-height: auto;
         width: 100%;
         padding: 20px;
     }
