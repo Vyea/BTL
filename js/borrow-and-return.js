@@ -1,3 +1,99 @@
+// Danh sach sach va phieu muon duoc luu ngay trong file JavaScript nay.
+const BOOKS_KEY = "thuVienBooks";
+const RECORDS_KEY = "thuVienBorrowRecords";
+const SHARED_PREFIX = "THU_VIEN_DATA:";
+
+const defaultBooks = [
+    { title: "Dế Mèn phiêu lưu ký", author: "Tô Hoài", category: "Văn học", status: "Còn sách" },
+    { title: "Lão Hạc", author: "Nam Cao", category: "Truyện ngắn", status: "Còn sách" },
+    { title: "Cho tôi xin một vé đi tuổi thơ", author: "Nguyễn Nhật Ánh", category: "Văn học", status: "Còn sách" },
+    { title: "Clean Code", author: "Robert C. Martin", category: "Công nghệ thông tin", status: "Còn sách" },
+    { title: "Lập trình Java cơ bản", author: "Nguyễn Văn A", category: "Công nghệ thông tin", status: "Còn sách" },
+    { title: "Đắc nhân tâm", author: "Dale Carnegie", category: "Kỹ năng sống", status: "Còn sách" },
+    { title: "Nhà giả kim", author: "Paulo Coelho", category: "Tiểu thuyết", status: "Còn sách" },
+    { title: "Tuổi trẻ đáng giá bao nhiêu", author: "Rosie Nguyễn", category: "Kỹ năng sống", status: "Còn sách" },
+    { title: "Harry Potter và Hòn đá Phù thủy", author: "J. K. Rowling", category: "Fantasy", status: "Còn sách" },
+    { title: "Tôi thấy hoa vàng trên cỏ xanh", author: "Nguyễn Nhật Ánh", category: "Văn học", status: "Còn sách" },
+    { title: "Lập trình Python cơ bản", author: "Nguyễn Văn B", category: "Công nghệ thông tin", status: "Còn sách" },
+    { title: "Số đỏ", author: "Vũ Trọng Phụng", category: "Văn học", status: "Còn sách" }
+];
+
+function readSharedData() {
+    // Uu tien window.name vi du lieu nay duoc cap nhat sau moi lan muon/tra.
+    if (window.name.startsWith(SHARED_PREFIX)) {
+        try {
+            return JSON.parse(window.name.substring(SHARED_PREFIX.length));
+        } catch (error) {
+            // Neu du lieu trong window.name khong doc duoc, dung localStorage.
+        }
+    }
+    // Neu trinh duyet khong giu window.name, doc du lieu duoc gui tren URL.
+    const params = new URLSearchParams(window.location.search);
+    const urlData = params.get("data");
+    if (urlData) {
+        try {
+            return JSON.parse(urlData);
+        } catch (error) {
+            // URL khong hop le thi doc localStorage.
+        }
+    }
+    return null;
+}
+
+function loadBooks() {
+    const sharedData = readSharedData();
+    if (sharedData && Array.isArray(sharedData.books)) {
+        return sharedData.books;
+    }
+    const savedBooks = localStorage.getItem(BOOKS_KEY);
+    if (savedBooks) {
+        try {
+            return JSON.parse(savedBooks);
+        } catch (error) {
+            // Du lieu loi thi dung danh sach mac dinh.
+        }
+    }
+    return defaultBooks.map(function(book) { return { ...book }; });
+}
+
+function loadBorrowRecords() {
+    const sharedData = readSharedData();
+    if (sharedData && Array.isArray(sharedData.records)) {
+        return sharedData.records;
+    }
+    const savedRecords = localStorage.getItem(RECORDS_KEY);
+    if (savedRecords) {
+        try {
+            return JSON.parse(savedRecords);
+        } catch (error) {
+            // Du lieu loi thi bat dau voi danh sach phieu trong.
+        }
+    }
+    return [];
+}
+
+let books = loadBooks();
+let borrowRecords = loadBorrowRecords();
+
+function saveData() {
+    // Luu rieng trong trinh duyet de tai lai trang van con du lieu.
+    localStorage.setItem(BOOKS_KEY, JSON.stringify(books));
+    localStorage.setItem(RECORDS_KEY, JSON.stringify(borrowRecords));
+
+    // Chia se du lieu khi di chuyen giua hai file HTML mo truc tiep.
+    window.name = SHARED_PREFIX + JSON.stringify({
+        books: books,
+        records: borrowRecords
+    });
+}
+
+function findBookByName(name) {
+    const wantedName = name.trim().toLowerCase();
+    return books.find(function(book) {
+        return book.title.trim().toLowerCase() === wantedName;
+    });
+}
+
 const borrowForm = document.getElementById("borrowForm");
 const studentIdInput = document.getElementById("studentId");
 const bookNameInput = document.getElementById("bookName");
@@ -12,34 +108,88 @@ function setBorrowDateToToday() {
     const day = String(today.getDate()).padStart(2, "0");
     borrowDateInput.value = year + "-" + month + "-" + day;
 }
+
 function appendTextCell(row, value, className) {
     const cell = document.createElement("td");
-    if (className) {
-        cell.className = className;
-    }
+    if (className) cell.className = className;
     cell.textContent = value;
     row.appendChild(cell);
     return cell;
 }
+
 function createStatusBadge(label, statusClass) {
     const badge = document.createElement("span");
     badge.className = "borrow-status " + statusClass;
     badge.textContent = label;
     return badge;
 }
+
+function renderBorrowRecords() {
+    tableBody.innerHTML = "";
+
+    if (borrowRecords.length === 0) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+        cell.colSpan = 6;
+        cell.className = "empty-row";
+        cell.textContent = "Chưa có phiếu mượn nào được lập.";
+        row.appendChild(cell);
+        tableBody.appendChild(row);
+        return;
+    }
+
+    for (let i = 0; i < borrowRecords.length; i++) {
+        const record = borrowRecords[i];
+        const row = document.createElement("tr");
+        appendTextCell(row, record.studentId, "cell-strong");
+        appendTextCell(row, record.bookTitle, "cell-strong");
+        appendTextCell(row, record.borrowDate, "date-cell");
+        appendTextCell(row, record.dueDate, "date-cell");
+
+        const statusCell = document.createElement("td");
+        statusCell.className = "status-cell";
+        if (record.status === "Đang mượn") {
+            statusCell.appendChild(createStatusBadge("Đang mượn", "borrowing"));
+        } else {
+            statusCell.appendChild(createStatusBadge("Đã trả", "returned"));
+        }
+        row.appendChild(statusCell);
+
+        const actionCell = document.createElement("td");
+        const returnButton = document.createElement("button");
+        returnButton.type = "button";
+        returnButton.className = "action-button return-button";
+        if (record.status === "Đang mượn") {
+            returnButton.textContent = "Đã trả";
+            returnButton.addEventListener("click", function() {
+                returnBook(record.id);
+            });
+        } else {
+            returnButton.textContent = "Đã hoàn tất";
+            returnButton.disabled = true;
+            returnButton.classList.add("is-complete");
+        }
+        actionCell.appendChild(returnButton);
+        row.appendChild(actionCell);
+        tableBody.appendChild(row);
+    }
+}
+
 function addBorrowRecord(event) {
     event.preventDefault();
     const studentId = studentIdInput.value.trim();
     const bookName = bookNameInput.value.trim();
     const borrowDate = borrowDateInput.value;
     const dueDate = dueDateInput.value;
+
     dueDateInput.setCustomValidity("");
     if (dueDate < borrowDate) {
         dueDateInput.setCustomValidity("Ngày hẹn trả không được trước ngày mượn.");
         dueDateInput.reportValidity();
         return;
     }
-    const book = findBookByTitle(bookName);
+
+    const book = findBookByName(bookName);
     if (!book) {
         alert("Sách không có trong thư viện");
         return;
@@ -48,49 +198,64 @@ function addBorrowRecord(event) {
         alert("Sách này đang được mượn, vui lòng chọn sách khác.");
         return;
     }
+
+    // Doi trang thai sach ngay khi lap phieu muon.
     book.status = "Đang mượn";
-    saveBooks();
-    const emptyRow = document.getElementById("emptyRow");
-    if (emptyRow) {
-        emptyRow.remove();
-    }
-    const row = document.createElement("tr");
-    appendTextCell(row, studentId, "cell-strong");
-    appendTextCell(row, book.title, "cell-strong");
-    appendTextCell(row, borrowDate, "date-cell");
-    appendTextCell(row, dueDate, "date-cell");
-    const statusCell = document.createElement("td");
-    statusCell.className = "status-cell";
-    statusCell.appendChild(createStatusBadge("Đang mượn", "borrowing"));
-    row.appendChild(statusCell);
-    const actionCell = document.createElement("td");
-    const returnButton = document.createElement("button");
-    returnButton.type = "button";
-    returnButton.className = "action-button return-button";
-    returnButton.textContent = "Đã trả";
-    returnButton.addEventListener("click", function() {
-        returnBook(row, book.title, returnButton);
-    });
-    actionCell.appendChild(returnButton);
-    row.appendChild(actionCell);
-    tableBody.prepend(row);
+    const record = {
+        id: String(Date.now()),
+        studentId: studentId,
+        bookTitle: book.title,
+        borrowDate: borrowDate,
+        dueDate: dueDate,
+        status: "Đang mượn"
+    };
+    borrowRecords.unshift(record);
+    saveData();
+    renderBorrowRecords();
     borrowForm.reset();
     setBorrowDateToToday();
 }
-function returnBook(row, bookTitle, button) {
-    const book = findBookByTitle(bookTitle);
-    if (book) {
-        book.status = "Còn sách";
-        saveBooks();
-    }
-    const statusCell = row.querySelector(".status-cell");
-    statusCell.replaceChildren(createStatusBadge("Đã trả", "returned"));
-    button.disabled = true;
-    button.textContent = "Đã hoàn tất";
-    button.classList.add("is-complete");
+
+function returnBook(recordId) {
+    const record = borrowRecords.find(function(item) {
+        return item.id === recordId;
+    });
+    if (!record || record.status === "Đã trả") return;
+
+    const book = findBookByName(record.bookTitle);
+    if (book) book.status = "Còn sách";
+    record.status = "Đã trả";
+
+    saveData();
+    renderBorrowRecords();
 }
+
 borrowForm.addEventListener("submit", addBorrowRecord);
 dueDateInput.addEventListener("input", function() {
     dueDateInput.setCustomValidity("");
 });
+
+// Neu tab khac cung mo trang, cap nhat khi trinh duyet co gui su kien storage.
+window.addEventListener("storage", function() {
+    books = loadBooks();
+    borrowRecords = loadBorrowRecords();
+    renderBorrowRecords();
+});
+
+// Khi bam menu, gui ca sach va phieu muon sang trang con lai qua URL.
+const navigationLinks = document.querySelectorAll(".nav-link");
+navigationLinks.forEach(function(link) {
+    link.addEventListener("click", function(event) {
+        event.preventDefault();
+        const nextPage = new URL(link.href);
+        nextPage.searchParams.set("data", JSON.stringify({
+            books: books,
+            records: borrowRecords
+        }));
+        window.location.href = nextPage.href;
+    });
+});
+
 setBorrowDateToToday();
+saveData();
+renderBorrowRecords();
