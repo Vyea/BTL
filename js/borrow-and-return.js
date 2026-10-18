@@ -1,8 +1,6 @@
-// Danh sach sach va phieu muon duoc luu ngay trong file JavaScript nay.
 const BOOKS_KEY = "thuVienBooks";
 const RECORDS_KEY = "thuVienBorrowRecords";
 const SHARED_PREFIX = "THU_VIEN_DATA:";
-
 const defaultBooks = [
     { title: "Dế Mèn phiêu lưu ký", author: "Tô Hoài", category: "Văn học", status: "Còn sách" },
     { title: "Lão Hạc", author: "Nam Cao", category: "Truyện ngắn", status: "Còn sách" },
@@ -19,22 +17,18 @@ const defaultBooks = [
 ];
 
 function readSharedData() {
-    // Uu tien window.name vi du lieu nay duoc cap nhat sau moi lan muon/tra.
     if (window.name.startsWith(SHARED_PREFIX)) {
         try {
             return JSON.parse(window.name.substring(SHARED_PREFIX.length));
         } catch (error) {
-            // Neu du lieu trong window.name khong doc duoc, dung localStorage.
         }
     }
-    // Neu trinh duyet khong giu window.name, doc du lieu duoc gui tren URL.
     const params = new URLSearchParams(window.location.search);
     const urlData = params.get("data");
     if (urlData) {
         try {
             return JSON.parse(urlData);
         } catch (error) {
-            // URL khong hop le thi doc localStorage.
         }
     }
     return null;
@@ -50,7 +44,6 @@ function loadBooks() {
         try {
             return JSON.parse(savedBooks);
         } catch (error) {
-            // Du lieu loi thi dung danh sach mac dinh.
         }
     }
     return defaultBooks.map(function(book) { return { ...book }; });
@@ -66,34 +59,27 @@ function loadBorrowRecords() {
         try {
             return JSON.parse(savedRecords);
         } catch (error) {
-            // Du lieu loi thi bat dau voi danh sach phieu trong.
         }
     }
     return [];
 }
-
 let books = loadBooks();
 let borrowRecords = loadBorrowRecords();
 
 function saveData() {
-    // Luu rieng trong trinh duyet de tai lai trang van con du lieu.
     localStorage.setItem(BOOKS_KEY, JSON.stringify(books));
     localStorage.setItem(RECORDS_KEY, JSON.stringify(borrowRecords));
-
-    // Chia se du lieu khi di chuyen giua hai file HTML mo truc tiep.
     window.name = SHARED_PREFIX + JSON.stringify({
         books: books,
         records: borrowRecords
     });
 }
-
 function findBookByName(name) {
     const wantedName = name.trim().toLowerCase();
     return books.find(function(book) {
         return book.title.trim().toLowerCase() === wantedName;
     });
 }
-
 const borrowForm = document.getElementById("borrowForm");
 const studentIdInput = document.getElementById("studentId");
 const bookNameInput = document.getElementById("bookName");
@@ -108,7 +94,6 @@ function setBorrowDateToToday() {
     const day = String(today.getDate()).padStart(2, "0");
     borrowDateInput.value = year + "-" + month + "-" + day;
 }
-
 function appendTextCell(row, value, className) {
     const cell = document.createElement("td");
     if (className) cell.className = className;
@@ -116,17 +101,14 @@ function appendTextCell(row, value, className) {
     row.appendChild(cell);
     return cell;
 }
-
 function createStatusBadge(label, statusClass) {
     const badge = document.createElement("span");
     badge.className = "borrow-status " + statusClass;
     badge.textContent = label;
     return badge;
 }
-
 function renderBorrowRecords() {
     tableBody.innerHTML = "";
-
     if (borrowRecords.length === 0) {
         const row = document.createElement("tr");
         const cell = document.createElement("td");
@@ -137,7 +119,6 @@ function renderBorrowRecords() {
         tableBody.appendChild(row);
         return;
     }
-
     for (let i = 0; i < borrowRecords.length; i++) {
         const record = borrowRecords[i];
         const row = document.createElement("tr");
@@ -154,7 +135,6 @@ function renderBorrowRecords() {
             statusCell.appendChild(createStatusBadge("Đã trả", "returned"));
         }
         row.appendChild(statusCell);
-
         const actionCell = document.createElement("td");
         const returnButton = document.createElement("button");
         returnButton.type = "button";
@@ -174,21 +154,18 @@ function renderBorrowRecords() {
         tableBody.appendChild(row);
     }
 }
-
 function addBorrowRecord(event) {
     event.preventDefault();
     const studentId = studentIdInput.value.trim();
     const bookName = bookNameInput.value.trim();
     const borrowDate = borrowDateInput.value;
     const dueDate = dueDateInput.value;
-
     dueDateInput.setCustomValidity("");
     if (dueDate < borrowDate) {
         dueDateInput.setCustomValidity("Ngày hẹn trả không được trước ngày mượn.");
         dueDateInput.reportValidity();
         return;
     }
-
     const book = findBookByName(bookName);
     if (!book) {
         alert("Sách không có trong thư viện");
@@ -198,8 +175,6 @@ function addBorrowRecord(event) {
         alert("Sách này đang được mượn, vui lòng chọn sách khác.");
         return;
     }
-
-    // Doi trang thai sach ngay khi lap phieu muon.
     book.status = "Đang mượn";
     const record = {
         id: String(Date.now()),
@@ -215,7 +190,6 @@ function addBorrowRecord(event) {
     borrowForm.reset();
     setBorrowDateToToday();
 }
-
 function returnBook(recordId) {
     const record = borrowRecords.find(function(item) {
         return item.id === recordId;
@@ -229,20 +203,16 @@ function returnBook(recordId) {
     saveData();
     renderBorrowRecords();
 }
-
 borrowForm.addEventListener("submit", addBorrowRecord);
 dueDateInput.addEventListener("input", function() {
     dueDateInput.setCustomValidity("");
 });
-
-// Neu tab khac cung mo trang, cap nhat khi trinh duyet co gui su kien storage.
 window.addEventListener("storage", function() {
     books = loadBooks();
     borrowRecords = loadBorrowRecords();
     renderBorrowRecords();
 });
 
-// Khi bam menu, gui ca sach va phieu muon sang trang con lai qua URL.
 const navigationLinks = document.querySelectorAll(".nav-link");
 navigationLinks.forEach(function(link) {
     link.addEventListener("click", function(event) {
@@ -255,7 +225,6 @@ navigationLinks.forEach(function(link) {
         window.location.href = nextPage.href;
     });
 });
-
 setBorrowDateToToday();
 saveData();
 renderBorrowRecords();
