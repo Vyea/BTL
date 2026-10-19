@@ -5,7 +5,6 @@ const ROLE_KEY = "thuVienRole";
 const STATUS_AVAILABLE = "Còn sách";
 const STATUS_BORROWED = "Đang mượn";
 const FIELDS = ["title", "author", "category", "publisher", "year", "shelf", "description"];
-
 const defaultBooks = [
     { title: "Dế Mèn phiêu lưu ký", author: "Tô Hoài", category: "Văn học", status: "Còn sách" },
     { title: "Lão Hạc", author: "Nam Cao", category: "Truyện ngắn", status: "Còn sách" },
@@ -21,21 +20,72 @@ const defaultBooks = [
     { title: "Số đỏ", author: "Vũ Trọng Phụng", category: "Văn học", status: "Còn sách" }
 ];
 
-function readSharedData() {
-    if (window.name.startsWith(SHARED_PREFIX)) {
-        try { return JSON.parse(window.name.substring(SHARED_PREFIX.length)); } catch (error) {}
+function readNameData() {
+    if (!window.name.startsWith(SHARED_PREFIX)) return {};
+    try { return JSON.parse(window.name.substring(SHARED_PREFIX.length)); } catch (error) { return {}; }
+}
+function readUrlData() {
+    const text = new URLSearchParams(window.location.search).get("data");
+    if (!text) return null;
+    try {
+        return JSON.parse(text);
+    } catch (error) {
+        return null;
     }
-    const urlData = new URLSearchParams(window.location.search).get("data");
-    if (urlData) {
-        try { return JSON.parse(urlData); } catch (error) {}
+}
+function readSharedData() {
+    const urlData = readUrlData();
+    if (urlData && (Array.isArray(urlData.books) || Array.isArray(urlData.records) || urlData.role)) {
+        return urlData;
+    }
+    const nameData = readNameData();
+    if (Array.isArray(nameData.books) || Array.isArray(nameData.records) || nameData.role) {
+        return nameData;
     }
     return null;
 }
-
 function readSaved(key) {
     try { return JSON.parse(localStorage.getItem(key)); } catch (error) { return null; }
 }
+function getCurrentRole() {
+    const params = new URLSearchParams(window.location.search);
+    const urlRole = params.get("role");
+    if (urlRole === "admin" || urlRole === "reader") return urlRole;
 
+    const urlData = readUrlData();
+    if (urlData && (urlData.role === "admin" || urlData.role === "reader")) {
+        return urlData.role;
+    }
+    try {
+        const role = sessionStorage.getItem(ROLE_KEY);
+        if (role) return role;
+    } catch (error) {}
+
+    try {
+        const role = localStorage.getItem(ROLE_KEY);
+        if (role) return role;
+    } catch (error) {}
+    const nameRole = readNameData().role;
+    return nameRole === "admin" || nameRole === "reader" ? nameRole : "";
+}
+function updateCurrentUrl(sharedData) {
+    try {
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.set("data", JSON.stringify(sharedData));
+        if (sharedData.role) currentUrl.searchParams.set("role", sharedData.role);
+        else currentUrl.searchParams.delete("role");
+        window.history.replaceState(null, "", currentUrl.href);
+    } catch (error) {
+    }
+}
+function clearLoginRole() {
+    try { sessionStorage.removeItem(ROLE_KEY); } catch (error) {}
+    try { localStorage.removeItem(ROLE_KEY); } catch (error) {}
+    const sharedData = readSharedData() || readNameData();
+    delete sharedData.role;
+    window.name = SHARED_PREFIX + JSON.stringify(sharedData);
+    updateCurrentUrl(sharedData);
+}
 function loadBooks() {
     const shared = readSharedData();
     if (shared && Array.isArray(shared.books)) return shared.books;
@@ -43,34 +93,36 @@ function loadBooks() {
     if (Array.isArray(saved)) return saved;
     return defaultBooks.map(function(book) { return { ...book }; });
 }
-
 function loadBorrowRecords() {
     const shared = readSharedData();
     if (shared && Array.isArray(shared.records)) return shared.records;
     const saved = readSaved(RECORDS_KEY);
     return Array.isArray(saved) ? saved : [];
 }
-
 let books = loadBooks();
 let borrowRecords = loadBorrowRecords();
 let editingBook = null;
 let toastTimer = null;
-
 function saveData() {
-    localStorage.setItem(BOOKS_KEY, JSON.stringify(books));
-    localStorage.setItem(RECORDS_KEY, JSON.stringify(borrowRecords));
-    window.name = SHARED_PREFIX + JSON.stringify({ books: books, records: borrowRecords });
+    try { localStorage.setItem(BOOKS_KEY, JSON.stringify(books)); } catch (error) {}
+    try { localStorage.setItem(RECORDS_KEY, JSON.stringify(borrowRecords)); } catch (error) {}
+    const sharedData = readNameData();
+    sharedData.books = books;
+    sharedData.records = borrowRecords;
+    const role = getCurrentRole();
+    if (role) sharedData.role = role;
+    else delete sharedData.role;
+    window.name = SHARED_PREFIX + JSON.stringify(sharedData);
+    updateCurrentUrl(sharedData);
 }
-
 function checkAdmin() {
-    if (sessionStorage.getItem(ROLE_KEY) !== "admin") {
+    if (getCurrentRole() !== "admin") {
         alert("Bạn cần đăng nhập bằng tài khoản admin để vào trang này.");
-        window.location.href = "login.html";
+        window.location.href = "index.html";
         return false;
     }
     return true;
 }
-
 const $ = function(id) { return document.getElementById(id); };
 const bookGrid = $("bookGrid");
 const overlay = $("overlay");
@@ -80,14 +132,12 @@ const searchInput = $("searchInput");
 const statusFilter = $("statusFilter");
 const categoryFilter = $("categoryFilter");
 const sortSelect = $("sortSelect");
-
 function el(tag, className, text) {
     const node = document.createElement(tag);
     if (className) node.className = className;
     if (text !== undefined) node.textContent = text;
     return node;
 }
-
 function showToast(text, type) {
     const toast = $("toast");
     toast.textContent = text;
@@ -253,7 +303,6 @@ bookForm.addEventListener("submit", function(event) {
     closeForm();
     render();
 });
-
 $("addButton").addEventListener("click", function() { openForm(null); });
 $("closeButton").addEventListener("click", closeForm);
 $("cancelButton").addEventListener("click", closeForm);
@@ -262,8 +311,44 @@ document.addEventListener("keydown", function(event) { if (event.key === "Escape
 [searchInput, statusFilter, categoryFilter, sortSelect].forEach(function(control) {
     control.addEventListener("input", render);
 });
-$("logoutLink").addEventListener("click", function() { sessionStorage.removeItem(ROLE_KEY); });
+document.querySelectorAll(".nav-link").forEach(function(link) {
+    link.addEventListener("click", function(event) {
+        event.preventDefault();
+        saveData();
+        const nextPage = new URL(link.href, window.location.href);
+        if (link.classList.contains("logout-link")) {
+            const latestData = { books: books, records: borrowRecords };
+            clearLoginRole();
+            nextPage.search = "";
+            nextPage.searchParams.set("data", JSON.stringify(latestData));
+            window.location.href = nextPage.href;
+            return;
+        }
+        const role = getCurrentRole();
+        const sharedData = { books: books, records: borrowRecords };
+        if (role) sharedData.role = role;
+        nextPage.searchParams.set("data", JSON.stringify(sharedData));
+        if (role) nextPage.searchParams.set("role", role);
+        else nextPage.searchParams.delete("role");
+        window.location.href = nextPage.href;
+    });
+});
 
+window.addEventListener("storage", function(event) {
+    if (event.key !== BOOKS_KEY && event.key !== RECORDS_KEY) return;
+    const savedBooks = readSaved(BOOKS_KEY);
+    const savedRecords = readSaved(RECORDS_KEY);
+    if (Array.isArray(savedBooks)) books = savedBooks;
+    if (Array.isArray(savedRecords)) borrowRecords = savedRecords;
+    const sharedData = readNameData();
+    sharedData.books = books;
+    sharedData.records = borrowRecords;
+    const role = getCurrentRole();
+    if (role) sharedData.role = role;
+    else delete sharedData.role;
+    window.name = SHARED_PREFIX + JSON.stringify(sharedData);
+    render();
+});
 if (checkAdmin()) {
     saveData();
     render();
