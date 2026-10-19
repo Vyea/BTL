@@ -1,22 +1,22 @@
-﻿const BOOKS_KEY = "thuVienBooks";
+const BOOKS_KEY = "thuVienBooks";
 const RECORDS_KEY = "thuVienBorrowRecordsByUser";
 const ROLE_KEY = "thuVienRole";
 const USER_KEY = "thuVienUserId";
 const SHARED_PREFIX = "THU_VIEN_DATA:";
 const SHARED_DATA_KEY = "thuVienSharedData";
 const defaultBooks = [
-    { title: "Dáº¿ MÃ¨n phiÃªu lÆ°u kÃ½", author: "TÃ´ HoÃ i", category: "VÄƒn há»c", status: "CÃ²n sÃ¡ch" },
-    { title: "LÃ£o Háº¡c", author: "Nam Cao", category: "Truyá»‡n ngáº¯n", status: "CÃ²n sÃ¡ch" },
-    { title: "Cho tÃ´i xin má»™t vÃ© Ä‘i tuá»•i thÆ¡", author: "Nguyá»…n Nháº­t Ãnh", category: "VÄƒn há»c", status: "CÃ²n sÃ¡ch" },
-    { title: "Clean Code", author: "Robert C. Martin", category: "CÃ´ng nghá»‡ thÃ´ng tin", status: "CÃ²n sÃ¡ch" },
-    { title: "Láº­p trÃ¬nh Java cÆ¡ báº£n", author: "Nguyá»…n VÄƒn A", category: "CÃ´ng nghá»‡ thÃ´ng tin", status: "CÃ²n sÃ¡ch" },
-    { title: "Äáº¯c nhÃ¢n tÃ¢m", author: "Dale Carnegie", category: "Ká»¹ nÄƒng sá»‘ng", status: "CÃ²n sÃ¡ch" },
-    { title: "NhÃ  giáº£ kim", author: "Paulo Coelho", category: "Tiá»ƒu thuyáº¿t", status: "CÃ²n sÃ¡ch" },
-    { title: "Tuá»•i tráº» Ä‘Ã¡ng giÃ¡ bao nhiÃªu", author: "Rosie Nguyá»…n", category: "Ká»¹ nÄƒng sá»‘ng", status: "CÃ²n sÃ¡ch" },
-    { title: "Harry Potter vÃ  HÃ²n Ä‘Ã¡ PhÃ¹ thá»§y", author: "J. K. Rowling", category: "Fantasy", status: "CÃ²n sÃ¡ch" },
-    { title: "TÃ´i tháº¥y hoa vÃ ng trÃªn cá» xanh", author: "Nguyá»…n Nháº­t Ãnh", category: "VÄƒn há»c", status: "CÃ²n sÃ¡ch" },
-    { title: "Láº­p trÃ¬nh Python cÆ¡ báº£n", author: "Nguyá»…n VÄƒn B", category: "CÃ´ng nghá»‡ thÃ´ng tin", status: "CÃ²n sÃ¡ch" },
-    { title: "Sá»‘ Ä‘á»", author: "VÅ© Trá»ng Phá»¥ng", category: "VÄƒn há»c", status: "CÃ²n sÃ¡ch" }
+    { title: "Dế Mèn phiêu lưu ký", author: "Tô Hoài", category: "Văn học", status: "Còn sách" },
+    { title: "Lão Hạc", author: "Nam Cao", category: "Truyện ngắn", status: "Còn sách" },
+    { title: "Cho tôi xin một vé đi tuổi thơ", author: "Nguyễn Nhật Ánh", category: "Văn học", status: "Còn sách" },
+    { title: "Clean Code", author: "Robert C. Martin", category: "Công nghệ thông tin", status: "Còn sách" },
+    { title: "Lập trình Java cơ bản", author: "Nguyễn Văn A", category: "Công nghệ thông tin", status: "Còn sách" },
+    { title: "Đắc nhân tâm", author: "Dale Carnegie", category: "Kỹ năng sống", status: "Còn sách" },
+    { title: "Nhà giả kim", author: "Paulo Coelho", category: "Tiểu thuyết", status: "Còn sách" },
+    { title: "Tuổi trẻ đáng giá bao nhiêu", author: "Rosie Nguyễn", category: "Kỹ năng sống", status: "Còn sách" },
+    { title: "Harry Potter và Hòn đá Phù thủy", author: "J. K. Rowling", category: "Fantasy", status: "Còn sách" },
+    { title: "Tôi thấy hoa vàng trên cỏ xanh", author: "Nguyễn Nhật Ánh", category: "Văn học", status: "Còn sách" },
+    { title: "Lập trình Python cơ bản", author: "Nguyễn Văn B", category: "Công nghệ thông tin", status: "Còn sách" },
+    { title: "Số đỏ", author: "Vũ Trọng Phụng", category: "Văn học", status: "Còn sách" }
 ];
 function readNameData() {
     if (!window.name.startsWith(SHARED_PREFIX)) return {};
@@ -90,14 +90,14 @@ function syncBookStatusesWithRecords(data) {
             if (!title) return;
             if (!titleStatus[title]) titleStatus[title] = { found: false, borrowed: false };
             titleStatus[title].found = true;
-            if (record.status === "Äang mÆ°á»£n") titleStatus[title].borrowed = true;
+            if (record.status === "Đang mượn") titleStatus[title].borrowed = true;
         });
     });
     data.books.forEach(function(book) {
         const title = String(book.title || "").trim().toLowerCase();
         const status = titleStatus[title];
         if (!status) return;
-        book.status = status.borrowed ? "Äang mÆ°á»£n" : "CÃ²n sÃ¡ch";
+        book.status = status.borrowed ? "Đang mượn" : "Còn sách";
     });
     return data;
 }
@@ -313,7 +313,7 @@ function renderBorrowRecords() {
         const cell = document.createElement("td");
         cell.colSpan = 6;
         cell.className = "empty-row";
-        cell.textContent = "ChÆ°a cÃ³ phiáº¿u mÆ°á»£n nÃ o Ä‘Æ°á»£c láº­p.";
+        cell.textContent = "Chưa có phiếu mượn nào được lập.";
         row.appendChild(cell);
         tableBody.appendChild(row);
         return;
@@ -327,23 +327,23 @@ function renderBorrowRecords() {
         appendTextCell(row, record.dueDate, "date-cell");
         const statusCell = document.createElement("td");
         statusCell.className = "status-cell";
-        if (record.status === "Äang mÆ°á»£n") {
-            statusCell.appendChild(createStatusBadge("Äang mÆ°á»£n", "borrowing"));
+        if (record.status === "Đang mượn") {
+            statusCell.appendChild(createStatusBadge("Đang mượn", "borrowing"));
         } else {
-            statusCell.appendChild(createStatusBadge("ÄÃ£ tráº£", "returned"));
+            statusCell.appendChild(createStatusBadge("Đã trả", "returned"));
         }
         row.appendChild(statusCell);
         const actionCell = document.createElement("td");
         const returnButton = document.createElement("button");
         returnButton.type = "button";
         returnButton.className = "action-button return-button";
-        if (record.status === "Äang mÆ°á»£n") {
-            returnButton.textContent = "ÄÃ£ tráº£";
+        if (record.status === "Đang mượn") {
+            returnButton.textContent = "Đã trả";
             returnButton.addEventListener("click", function() {
                 returnBook(record.id);
             });
         } else {
-            returnButton.textContent = "ÄÃ£ hoÃ n táº¥t";
+            returnButton.textContent = "Đã hoàn tất";
             returnButton.disabled = true;
             returnButton.classList.add("is-complete");
         }
@@ -360,27 +360,27 @@ function addBorrowRecord(event) {
     const dueDate = dueDateInput.value;
     dueDateInput.setCustomValidity("");
     if (dueDate < borrowDate) {
-        dueDateInput.setCustomValidity("NgÃ y háº¹n tráº£ khÃ´ng Ä‘Æ°á»£c trÆ°á»›c ngÃ y mÆ°á»£n.");
+        dueDateInput.setCustomValidity("Ngày hẹn trả không được trước ngày mượn.");
         dueDateInput.reportValidity();
         return;
     }
     const book = findBookByName(bookName);
     if (!book) {
-        alert("SÃ¡ch khÃ´ng cÃ³ trong thÆ° viá»‡n");
+        alert("Sách không có trong thư viện");
         return;
     }
-    if (book.status === "Äang mÆ°á»£n") {
-        alert("SÃ¡ch nÃ y Ä‘ang Ä‘Æ°á»£c mÆ°á»£n, vui lÃ²ng chá»n sÃ¡ch khÃ¡c.");
+    if (book.status === "Đang mượn") {
+        alert("Sách này đang được mượn, vui lòng chọn sách khác.");
         return;
     }
-    book.status = "Äang mÆ°á»£n";
+    book.status = "Đang mượn";
     const record = {
         id: String(Date.now()),
         studentId: studentId,
         bookTitle: book.title,
         borrowDate: borrowDate,
         dueDate: dueDate,
-        status: "Äang mÆ°á»£n",
+        status: "Đang mượn",
         updatedAt: Date.now()
     };
     borrowRecords.unshift(record);
@@ -393,10 +393,10 @@ function returnBook(recordId) {
     const record = borrowRecords.find(function(item) {
         return item.id === recordId;
     });
-    if (!record || record.status === "ÄÃ£ tráº£") return;
+    if (!record || record.status === "Đã trả") return;
     const book = findBookByName(record.bookTitle);
-    if (book) book.status = "CÃ²n sÃ¡ch";
-    record.status = "ÄÃ£ tráº£";
+    if (book) book.status = "Còn sách";
+    record.status = "Đã trả";
     record.updatedAt = Date.now();
     saveData();
     renderBorrowRecords();
@@ -408,7 +408,7 @@ function addAdminLinkIfNeeded() {
     const adminLink = document.createElement("a");
     adminLink.href = "admin.html";
     adminLink.className = "nav-link";
-    adminLink.textContent = "Quáº£n lÃ½ Ä‘áº§u sÃ¡ch";
+    adminLink.textContent = "Quản lý đầu sách";
     nav.appendChild(adminLink);
 }
 function goToPage(link) {

@@ -1,4 +1,4 @@
-﻿const ROLE_KEY = "thuVienRole";
+const ROLE_KEY = "thuVienRole";
 const USER_KEY = "thuVienUserId";
 const BOOKS_KEY = "thuVienBooks";
 const RECORDS_KEY = "thuVienBorrowRecordsByUser";
@@ -77,14 +77,14 @@ function syncBookStatusesWithRecords(data) {
             if (!title) return;
             if (!titleStatus[title]) titleStatus[title] = { found: false, borrowed: false };
             titleStatus[title].found = true;
-            if (record.status === "Äang mÆ°á»£n") titleStatus[title].borrowed = true;
+            if (record.status === "Đang mượn") titleStatus[title].borrowed = true;
         });
     });
     data.books.forEach(function(book) {
         const title = String(book.title || "").trim().toLowerCase();
         const status = titleStatus[title];
         if (!status) return;
-        book.status = status.borrowed ? "Äang mÆ°á»£n" : "CÃ²n sÃ¡ch";
+        book.status = status.borrowed ? "Đang mượn" : "Còn sách";
     });
     return data;
 }
@@ -193,7 +193,7 @@ document.getElementById("loginForm").addEventListener("submit", function(event) 
     const pass = document.getElementById("password").value.trim();
     const errorMsg = document.getElementById("errorMsg");
     if (user === "" || pass === "") {
-        errorMsg.textContent = "Vui lÃ²ng nháº­p Ä‘áº§y Ä‘á»§ thÃ´ng tin!";
+        errorMsg.textContent = "Vui lòng nhập đầy đủ thông tin!";
         return;
     }
     let role = "reader";
@@ -203,9 +203,9 @@ document.getElementById("loginForm").addEventListener("submit", function(event) 
         role = "admin";
         destination = "admin.html";
         accountId = "admin";
-        alert("ÄÄƒng nháº­p thÃ nh cÃ´ng vá»›i admin!");
+        alert("Đăng nhập thành công với admin!");
     } else {
-        alert("ÄÄƒng nháº­p thÃ nh cÃ´ng!");
+        alert("Đăng nhập thành công!");
     }
     const sharedData = setRole(role, accountId);
     const nextPage = new URL(destination, window.location.href);
