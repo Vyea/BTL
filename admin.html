@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý đầu sách - Thư viện</title>
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+    <main class="page">
+        <aside class="sidebar">
+            <h2>Thư viện</h2>
+            <p class="sidebar-description">Quản lý sách và mượn trả</p>
+            <nav>
+                <a href="catalog.html" class="nav-link">Tra cứu sách</a>
+                <a href="borrow-and-return.html" class="nav-link">Mượn và trả sách</a>
+                <a href="admin.html" class="nav-link active">Quản lý đầu sách</a>
+            </nav>
+            <a href="index.html" class="nav-link logout-link" id="logoutLink">Đăng xuất</a>
+        </aside>
+        <section class="content">
+            <div class="page-head">
+                <div>
+                    <h1>Quản lý đầu sách</h1>
+                    <p class="intro">Thêm, sửa hoặc xóa sách trong thư viện.</p>
+                </div>
+                <button type="button" class="primary-button" id="addButton">+ Thêm sách</button>
+            </div>
+            <section class="book-summary" aria-label="Thống kê sách">
+                <div class="summary-box"><span class="summary-label">Tổng số sách</span><strong id="totalBooks">0</strong></div>
+                <div class="summary-box available-box"><span class="summary-label">Sách còn sẵn</span><strong id="availableBooks">0</strong></div>
+                <div class="summary-box borrowed-box"><span class="summary-label">Sách đã mượn</span><strong id="borrowedBooks">0</strong></div>
+            </section>
+            <section class="toolbar" aria-label="Tìm kiếm và lọc">
+                <input type="text" id="searchInput" placeholder="Tìm theo tên sách, tác giả, thể loại, nhà xuất bản" aria-label="Tìm sách">
+                <select id="statusFilter" aria-label="Lọc theo trạng thái">
+                    <option value="">Mọi trạng thái</option>
+                    <option value="Còn sách">Còn sách</option>
+                    <option value="Đang mượn">Đang mượn</option>
+                </select>
+                <select id="categoryFilter" aria-label="Lọc theo thể loại"></select>
+                <select id="sortSelect" aria-label="Sắp xếp">
+                    <option value="az">Tên A đến Z</option>
+                    <option value="za">Tên Z đến A</option>
+                    <option value="new">Mới thêm trước</option>
+                </select>
+            </section>
+            <p id="resultCount" class="result-count"></p>
+            <section id="bookGrid" class="book-grid"></section>
+        </section>
+    </main>
+
+    <div class="overlay" id="overlay" hidden>
+        <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="formTitle">
+            <form id="bookForm" novalidate>
+                <header class="drawer-head">
+                    <h2 id="formTitle">Thêm sách mới</h2>
+                    <button type="button" class="close-button" id="closeButton" aria-label="Đóng">×</button>
+                </header>
+                <div class="drawer-body">
+                    <h3 class="section-title">Thông tin chính</h3>
+                    <div class="form-group"><label for="field-title">Tên sách *</label><input type="text" id="field-title" autocomplete="off"></div>
+                    <div class="form-group"><label for="field-author">Tác giả *</label><input type="text" id="field-author" autocomplete="off"></div>
+                    <div class="form-group"><label for="field-category">Thể loại *</label><input type="text" id="field-category" list="categoryList" autocomplete="off"><datalist id="categoryList"></datalist></div>
+                    <h3 class="section-title">Xuất bản</h3>
+                    <div class="form-row">
+                        <div class="form-group"><label for="field-publisher">Nhà xuất bản</label><input type="text" id="field-publisher" autocomplete="off"></div>
+                        <div class="form-group"><label for="field-year">Năm xuất bản</label><input type="text" id="field-year" inputmode="numeric" autocomplete="off"></div>
+                    </div>
+                    <h3 class="section-title">Lưu trữ và mô tả</h3>
+                    <div class="form-group"><label for="field-shelf">Vị trí kệ sách</label><input type="text" id="field-shelf" autocomplete="off"></div>
+                    <div class="form-group"><label for="field-description">Mô tả ngắn</label><textarea id="field-description" rows="3"></textarea></div>
+                    <p id="formMessage" class="form-message" role="alert"></p>
+                </div>
+                <footer class="drawer-foot">
+                    <button type="button" class="secondary-button" id="cancelButton">Hủy</button>
+                    <button type="submit" class="primary-button" id="saveButton">Thêm sách</button>
+                </footer>
+            </form>
+        </aside>
+    </div>
+    <div class="toast" id="toast" role="status" hidden></div>
+    <script src="js/admin.js"></script>
+</body>
+</html>
