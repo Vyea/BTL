@@ -1,7 +1,8 @@
 const BOOKS_KEY = "thuVienBooks";
-const RECORDS_KEY = "thuVienBorrowRecords";
+const RECORDS_KEY = "thuVienBorrowRecordsByUser";
 const SHARED_PREFIX = "THU_VIEN_DATA:";
 const ROLE_KEY = "thuVienRole";
+const USER_KEY = "thuVienUserId";
 const STATUS_AVAILABLE = "Còn sách";
 const STATUS_BORROWED = "Đang mượn";
 const FIELDS = ["title", "author", "category", "publisher", "year", "shelf", "description"];
@@ -19,10 +20,13 @@ const defaultBooks = [
     { title: "Lập trình Python cơ bản", author: "Nguyễn Văn B", category: "Công nghệ thông tin", status: "Còn sách" },
     { title: "Số đỏ", author: "Vũ Trọng Phụng", category: "Văn học", status: "Còn sách" }
 ];
-
 function readNameData() {
     if (!window.name.startsWith(SHARED_PREFIX)) return {};
-    try { return JSON.parse(window.name.substring(SHARED_PREFIX.length)); } catch (error) { return {}; }
+    try {
+        return JSON.parse(window.name.substring(SHARED_PREFIX.length));
+    } catch (error) {
+        return {};
+    }
 }
 function readUrlData() {
     const text = new URLSearchParams(window.location.search).get("data");
@@ -35,38 +39,97 @@ function readUrlData() {
 }
 function readSharedData() {
     const urlData = readUrlData();
-    if (urlData && (Array.isArray(urlData.books) || Array.isArray(urlData.records) || urlData.role)) {
+    if (urlData && (Array.isArray(urlData.books) || Array.isArray(urlData.records) || urlData.recordsByUser || urlData.role || urlData.userId)) {
         return urlData;
     }
     const nameData = readNameData();
-    if (Array.isArray(nameData.books) || Array.isArray(nameData.records) || nameData.role) {
+    if (Array.isArray(nameData.books) || Array.isArray(nameData.records) || nameData.recordsByUser || nameData.role || nameData.userId) {
         return nameData;
     }
     return null;
 }
 function readSaved(key) {
-    try { return JSON.parse(localStorage.getItem(key)); } catch (error) { return null; }
+    try {
+        return JSON.parse(localStorage.getItem(key));
+    } catch (error) {
+        return null;
+    }
 }
 function getCurrentRole() {
     const params = new URLSearchParams(window.location.search);
     const urlRole = params.get("role");
     if (urlRole === "admin" || urlRole === "reader") return urlRole;
-
     const urlData = readUrlData();
-    if (urlData && (urlData.role === "admin" || urlData.role === "reader")) {
-        return urlData.role;
-    }
+    if (urlData && (urlData.role === "admin" || urlData.role === "reader")) return urlData.role;
+    const nameRole = readNameData().role;
+    if (nameRole === "admin" || nameRole === "reader") return nameRole;
     try {
         const role = sessionStorage.getItem(ROLE_KEY);
-        if (role) return role;
+        if (role === "admin" || role === "reader") return role;
     } catch (error) {}
-
     try {
         const role = localStorage.getItem(ROLE_KEY);
-        if (role) return role;
+        if (role === "admin" || role === "reader") return role;
     } catch (error) {}
-    const nameRole = readNameData().role;
-    return nameRole === "admin" || nameRole === "reader" ? nameRole : "";
+    return "";
+}
+function getCurrentUserId() {
+    const params = new URLSearchParams(window.location.search);
+    const urlUser = params.get("user");
+    if (urlUser) return urlUser.trim().toLowerCase();
+    const urlData = readUrlData();
+    if (urlData && urlData.userId) return String(urlData.userId).trim().toLowerCase();
+    const nameUser = readNameData().userId;
+    if (nameUser) return String(nameUser).trim().toLowerCase();
+    try {
+        const savedUser = localStorage.getItem(USER_KEY);
+        if (savedUser) return savedUser.trim().toLowerCase();
+    } catch (error) {}
+    return getCurrentRole() === "admin" ? "admin" : (getCurrentRole() === "reader" ? "reader" : "");
+}
+function getCurrentUserKey() {
+    const role = getCurrentRole() || "reader";
+    const userId = getCurrentUserId() || (role === "admin" ? "admin" : "reader");
+    return role + ":" + userId;
+}
+function loadBooks() {
+    const sharedData = readSharedData();
+    if (sharedData && Array.isArray(sharedData.books)) return sharedData.books;
+    const savedBooks = readSaved(BOOKS_KEY);
+    if (Array.isArray(savedBooks)) return savedBooks;
+    return defaultBooks.map(function(book) { return { ...book }; });
+}
+function loadRecordsMap() {
+    const sharedData = readSharedData() || {};
+    if (sharedData.recordsByUser && typeof sharedData.recordsByUser === "object" && !Array.isArray(sharedData.recordsByUser)) {
+        return sharedData.recordsByUser;
+    }
+    const savedMap = readSaved(RECORDS_KEY);
+    if (savedMap && typeof savedMap === "object" && !Array.isArray(savedMap)) return savedMap;
+    const oldRecords = Array.isArray(sharedData.records) ? sharedData.records : readSaved("thuVienBorrowRecords");
+    const recordsMap = {};
+    if (Array.isArray(oldRecords)) recordsMap[getCurrentUserKey()] = oldRecords;
+    return recordsMap;
+}
+let recordsByUser = loadRecordsMap();
+function loadBorrowRecords() {
+    const userKey = getCurrentUserKey();
+    if (!Array.isArray(recordsByUser[userKey])) recordsByUser[userKey] = [];
+    return recordsByUser[userKey];
+}
+function makeSharedData() {
+    const sharedData = readSharedData() || readNameData() || {};
+    sharedData.books = books;
+    sharedData.recordsByUser = recordsByUser;
+    sharedData.recordsByUser[getCurrentUserKey()] = borrowRecords;
+    delete sharedData.records;
+    const role = getCurrentRole();
+    const userId = getCurrentUserId();
+    if (role) sharedData.role = role;
+    else delete sharedData.role;
+    if (userId) sharedData.userId = userId;
+    else delete sharedData.userId;
+    return sharedData;
 }
 function updateCurrentUrl(sharedData) {
     try {
@@ -74,47 +137,41 @@ function updateCurrentUrl(sharedData) {
         currentUrl.searchParams.set("data", JSON.stringify(sharedData));
         if (sharedData.role) currentUrl.searchParams.set("role", sharedData.role);
         else currentUrl.searchParams.delete("role");
+        if (sharedData.userId) currentUrl.searchParams.set("user", sharedData.userId);
+        else currentUrl.searchParams.delete("user");
         window.history.replaceState(null, "", currentUrl.href);
     } catch (error) {
     }
 }
-function clearLoginRole() {
-    try { sessionStorage.removeItem(ROLE_KEY); } catch (error) {}
-    try { localStorage.removeItem(ROLE_KEY); } catch (error) {}
-    const sharedData = readSharedData() || readNameData();
-    delete sharedData.role;
+function saveData() {
+    recordsByUser[getCurrentUserKey()] = borrowRecords;
+    const sharedData = makeSharedData();
+    try { localStorage.setItem(BOOKS_KEY, JSON.stringify(books)); } catch (error) {}
+    try { localStorage.setItem(RECORDS_KEY, JSON.stringify(recordsByUser)); } catch (error) {}
     window.name = SHARED_PREFIX + JSON.stringify(sharedData);
     updateCurrentUrl(sharedData);
 }
-function loadBooks() {
-    const shared = readSharedData();
-    if (shared && Array.isArray(shared.books)) return shared.books;
-    const saved = readSaved(BOOKS_KEY);
-    if (Array.isArray(saved)) return saved;
-    return defaultBooks.map(function(book) { return { ...book }; });
+function clearLoginRole() {
+    try { sessionStorage.removeItem(ROLE_KEY); } catch (error) {}
+    try { localStorage.removeItem(ROLE_KEY); } catch (error) {}
+    try { sessionStorage.removeItem(USER_KEY); } catch (error) {}
+    try { localStorage.removeItem(USER_KEY); } catch (error) {}
+    const sharedData = makeSharedData();
+    delete sharedData.role;
+    delete sharedData.userId;
+    window.name = SHARED_PREFIX + JSON.stringify(sharedData);
+    updateCurrentUrl(sharedData);
 }
-function loadBorrowRecords() {
-    const shared = readSharedData();
-    if (shared && Array.isArray(shared.records)) return shared.records;
-    const saved = readSaved(RECORDS_KEY);
-    return Array.isArray(saved) ? saved : [];
+function findBookByName(name) {
+    const wantedName = name.trim().toLowerCase();
+    return books.find(function(book) {
+        return book.title.trim().toLowerCase() === wantedName;
+    });
 }
 let books = loadBooks();
 let borrowRecords = loadBorrowRecords();
 let editingBook = null;
 let toastTimer = null;
-function saveData() {
-    try { localStorage.setItem(BOOKS_KEY, JSON.stringify(books)); } catch (error) {}
-    try { localStorage.setItem(RECORDS_KEY, JSON.stringify(borrowRecords)); } catch (error) {}
-    const sharedData = readNameData();
-    sharedData.books = books;
-    sharedData.records = borrowRecords;
-    const role = getCurrentRole();
-    if (role) sharedData.role = role;
-    else delete sharedData.role;
-    window.name = SHARED_PREFIX + JSON.stringify(sharedData);
-    updateCurrentUrl(sharedData);
-}
 function checkAdmin() {
     if (getCurrentRole() !== "admin") {
         alert("Bạn cần đăng nhập bằng tài khoản admin để vào trang này.");
@@ -146,13 +203,11 @@ function showToast(text, type) {
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function() { toast.hidden = true; }, 3000);
 }
-
 function coverIndex(category) {
     let sum = 0;
     for (let i = 0; i < category.length; i++) sum += category.charCodeAt(i);
     return sum % 5;
 }
-
 function getShownBooks() {
     const keyword = searchInput.value.toLowerCase().trim();
     const list = books.filter(function(book) {
@@ -166,7 +221,6 @@ function getShownBooks() {
     if (sortSelect.value === "za") list.reverse();
     return list;
 }
-
 function renderCategories() {
     const current = categoryFilter.value;
     const names = [];
@@ -187,7 +241,6 @@ function renderCategories() {
     });
     categoryFilter.value = names.indexOf(current) === -1 ? "" : current;
 }
-
 function createCard(book) {
     const card = el("article", "book-card");
     const cover = el("div", "book-cover cover-" + coverIndex(book.category));
@@ -214,7 +267,6 @@ function createCard(book) {
     card.appendChild(info);
     return card;
 }
-
 function render() {
     renderCategories();
     const shown = getShownBooks();
@@ -228,7 +280,6 @@ function render() {
     }
     shown.forEach(function(book) { bookGrid.appendChild(createCard(book)); });
 }
-
 function openForm(book) {
     editingBook = book || null;
     FIELDS.forEach(function(name) { $("field-" + name).value = book && book[name] ? book[name] : ""; });
@@ -238,12 +289,10 @@ function openForm(book) {
     overlay.hidden = false;
     $("field-title").focus();
 }
-
 function closeForm() {
     overlay.hidden = true;
     editingBook = null;
 }
-
 function validate(values) {
     if (values.title === "" || values.author === "" || values.category === "") {
         return "Vui lòng nhập đầy đủ tên sách, tác giả và thể loại.";
@@ -262,13 +311,15 @@ function validate(values) {
     }
     return "";
 }
-
 function renameInRecords(oldTitle, newTitle) {
-    borrowRecords.forEach(function(record) {
-        if (record.bookTitle === oldTitle) record.bookTitle = newTitle;
+    Object.keys(recordsByUser).forEach(function(userKey) {
+        const records = recordsByUser[userKey];
+        if (!Array.isArray(records)) return;
+        records.forEach(function(record) {
+            if (record.bookTitle === oldTitle) record.bookTitle = newTitle;
+        });
     });
 }
-
 function deleteBook(book) {
     if (book.status === STATUS_BORROWED) {
         showToast("Không thể xóa \"" + book.title + "\" vì sách đang được mượn.", "error");
@@ -280,7 +331,6 @@ function deleteBook(book) {
     render();
     showToast("Đã xóa sách \"" + book.title + "\".");
 }
-
 bookForm.addEventListener("submit", function(event) {
     event.preventDefault();
     const values = {};
@@ -316,37 +366,36 @@ document.querySelectorAll(".nav-link").forEach(function(link) {
         event.preventDefault();
         saveData();
         const nextPage = new URL(link.href, window.location.href);
+        const sharedData = makeSharedData();
         if (link.classList.contains("logout-link")) {
-            const latestData = { books: books, records: borrowRecords };
+            delete sharedData.role;
+            delete sharedData.userId;
             clearLoginRole();
             nextPage.search = "";
-            nextPage.searchParams.set("data", JSON.stringify(latestData));
+            nextPage.searchParams.set("data", JSON.stringify(sharedData));
             window.location.href = nextPage.href;
             return;
         }
         const role = getCurrentRole();
-        const sharedData = { books: books, records: borrowRecords };
-        if (role) sharedData.role = role;
+        const userId = getCurrentUserId();
         nextPage.searchParams.set("data", JSON.stringify(sharedData));
         if (role) nextPage.searchParams.set("role", role);
         else nextPage.searchParams.delete("role");
+        if (userId) nextPage.searchParams.set("user", userId);
+        else nextPage.searchParams.delete("user");
         window.location.href = nextPage.href;
     });
 });
-
 window.addEventListener("storage", function(event) {
-    if (event.key !== BOOKS_KEY && event.key !== RECORDS_KEY) return;
+    if (event.key !== BOOKS_KEY && event.key !== RECORDS_KEY && event.key !== "thuVienBorrowRecords") return;
     const savedBooks = readSaved(BOOKS_KEY);
-    const savedRecords = readSaved(RECORDS_KEY);
+    const savedMap = readSaved(RECORDS_KEY);
     if (Array.isArray(savedBooks)) books = savedBooks;
-    if (Array.isArray(savedRecords)) borrowRecords = savedRecords;
-    const sharedData = readNameData();
-    sharedData.books = books;
-    sharedData.records = borrowRecords;
-    const role = getCurrentRole();
-    if (role) sharedData.role = role;
-    else delete sharedData.role;
-    window.name = SHARED_PREFIX + JSON.stringify(sharedData);
+    if (savedMap && typeof savedMap === "object" && !Array.isArray(savedMap)) {
+        recordsByUser = savedMap;
+        borrowRecords = Array.isArray(recordsByUser[getCurrentUserKey()]) ? recordsByUser[getCurrentUserKey()] : [];
+    }
+    window.name = SHARED_PREFIX + JSON.stringify(makeSharedData());
     render();
 });
 if (checkAdmin()) {
