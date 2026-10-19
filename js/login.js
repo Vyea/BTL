@@ -1,4 +1,4 @@
-const ROLE_KEY = "thuVienRole";
+﻿const ROLE_KEY = "thuVienRole";
 const USER_KEY = "thuVienUserId";
 const BOOKS_KEY = "thuVienBooks";
 const RECORDS_KEY = "thuVienBorrowRecordsByUser";
@@ -6,129 +6,185 @@ const OLD_RECORDS_KEY = "thuVienBorrowRecords";
 const SHARED_PREFIX = "THU_VIEN_DATA:";
 const SHARED_DATA_KEY = "thuVienSharedData";
 function readNameData() {
-    if (!window.name.startsWith(SHARED_PREFIX)) return null;
-    try { return JSON.parse(window.name.substring(SHARED_PREFIX.length)); }
-    catch (error) { return null; }
+    if (!window.name.startsWith(SHARED_PREFIX)) return {};
+    try {
+        return JSON.parse(window.name.substring(SHARED_PREFIX.length));
+    } catch (error) {
+        return {};
+    }
 }
 function readUrlData() {
     const text = new URLSearchParams(window.location.search).get("data");
     if (!text) return null;
-    try { return JSON.parse(text); }
-    catch (error) { return null; }
+    try {
+        return JSON.parse(text);
+    } catch (error) {
+        return null;
+    }
 }
 function readSaved(key) {
     try {
-        const text = localStorage.getItem(key);
-        return text ? JSON.parse(text) : null;
-    } catch (error) { return null; }
-}
-function getSharedCandidates() {
-    const candidates = [readSaved(SHARED_DATA_KEY), readNameData(), readUrlData()];
-    const validCandidates = candidates.filter(function(data) {
-        return data && typeof data === "object" && !Array.isArray(data);
-    });
-    validCandidates.sort(function(first, second) {
-        return Number(first.savedAt || 0) - Number(second.savedAt || 0);
-    });
-    return validCandidates;
-}
-function readSharedData() {
-    const candidates = getSharedCandidates();
-    return candidates.length ? candidates[candidates.length - 1] : {};
-}
-function mergeRecordsMaps() {
-    const merged = {};
-    for (let mapIndex = 0; mapIndex < arguments.length; mapIndex++) {
-        const map = arguments[mapIndex];
-        if (!map || typeof map !== "object" || Array.isArray(map)) continue;
-        Object.keys(map).forEach(function(userKey) {
-            if (!Array.isArray(map[userKey])) return;
-            if (!Array.isArray(merged[userKey])) merged[userKey] = [];
-            map[userKey].forEach(function(record) {
-                const recordId = record.id !== undefined
-                    ? String(record.id)
-                    : [record.studentId, record.bookTitle, record.borrowDate].join("|");
-                const index = merged[userKey].findIndex(function(item) {
-                    const itemId = item.id !== undefined
-                        ? String(item.id)
-                        : [item.studentId, item.bookTitle, item.borrowDate].join("|");
-                    return itemId === recordId;
-                });
-                if (index === -1) {
-                    merged[userKey].push(record);
-                    return;
-                }
-                const oldRecord = merged[userKey][index];
-                const oldTime = Number(oldRecord.updatedAt || oldRecord.createdAt || 0);
-                const newTime = Number(record.updatedAt || record.createdAt || 0);
-                if (newTime > oldTime ||
-                    (newTime === oldTime && record.status === "Đã trả" && oldRecord.status !== "Đã trả")) {
-                    merged[userKey][index] = record;
-                }
-            });
-        });
+        return JSON.parse(localStorage.getItem(key));
+    } catch (error) {
+        return null;
     }
-    return merged;
 }
-function saveSharedData(data) {
-    window.name = SHARED_PREFIX + JSON.stringify(data);
-    try { localStorage.setItem(SHARED_DATA_KEY, JSON.stringify(data)); } catch (error) {}
+function mergeRecordLists(oldList, newList) {
+    const result = Array.isArray(oldList) ? oldList.slice() : [];
+    if (!Array.isArray(newList)) return result;
+    for (let i = 0; i < newList.length; i++) {
+        const newRecord = newList[i];
+        const newId = newRecord.id !== undefined
+            ? String(newRecord.id)
+            : [newRecord.studentId, newRecord.bookTitle, newRecord.borrowDate, newRecord.dueDate].join("|");
+        let foundIndex = -1;
+        for (let j = 0; j < result.length; j++) {
+            const oldRecord = result[j];
+            const oldId = oldRecord.id !== undefined
+                ? String(oldRecord.id)
+                : [oldRecord.studentId, oldRecord.bookTitle, oldRecord.borrowDate, oldRecord.dueDate].join("|");
+            if (oldId === newId) {
+                foundIndex = j;
+                break;
+            }
+        }
+        if (foundIndex === -1) {
+            result.push(newRecord);
+        } else {
+            const oldRecord = result[foundIndex];
+            const oldTime = Number(oldRecord.updatedAt || 0);
+            const newTime = Number(newRecord.updatedAt || 0);
+            if (newTime >= oldTime) result[foundIndex] = newRecord;
+        }
+    }
+    return result;
 }
-function syncBookStatuses(data) {
-    if (!Array.isArray(data.books)) return;
-    const activeLoans = {};
-    const recordsByUser = data.recordsByUser || {};
-    Object.keys(recordsByUser).forEach(function(userKey) {
-        const records = recordsByUser[userKey];
+function mergeRecordMaps(targetMap, sourceMap) {
+    if (!sourceMap || typeof sourceMap !== "object" || Array.isArray(sourceMap)) return targetMap;
+    Object.keys(sourceMap).forEach(function(userKey) {
+        targetMap[userKey] = mergeRecordLists(targetMap[userKey], sourceMap[userKey]);
+    });
+    return targetMap;
+}
+function syncBookStatusesWithRecords(data) {
+    if (!Array.isArray(data.books) || !data.recordsByUser) return data;
+    const titleStatus = {};
+    Object.keys(data.recordsByUser).forEach(function(userKey) {
+        const records = data.recordsByUser[userKey];
         if (!Array.isArray(records)) return;
         records.forEach(function(record) {
-            if (record.status === "Đang mượn" && record.bookTitle) {
-                activeLoans[record.bookTitle.trim().toLowerCase()] = true;
-            }
+            const title = String(record.bookTitle || "").trim().toLowerCase();
+            if (!title) return;
+            if (!titleStatus[title]) titleStatus[title] = { found: false, borrowed: false };
+            titleStatus[title].found = true;
+            if (record.status === "Äang mÆ°á»£n") titleStatus[title].borrowed = true;
         });
     });
     data.books.forEach(function(book) {
-        const title = book.title.trim().toLowerCase();
-        book.status = activeLoans[title] ? "Đang mượn" : "Còn sách";
+        const title = String(book.title || "").trim().toLowerCase();
+        const status = titleStatus[title];
+        if (!status) return;
+        book.status = status.borrowed ? "Äang mÆ°á»£n" : "CÃ²n sÃ¡ch";
     });
+    return data;
+}
+function readSharedData() {
+    const candidates = [];
+    const urlData = readUrlData();
+    const nameData = readNameData();
+    const savedData = readSaved(SHARED_DATA_KEY);
+    if (urlData && typeof urlData === "object") candidates.push({ data: urlData, priority: 1 });
+    if (nameData && Object.keys(nameData).length > 0) candidates.push({ data: nameData, priority: 2 });
+    if (savedData && typeof savedData === "object") candidates.push({ data: savedData, priority: 3 });
+    const legacyData = {};
+    const savedBooks = readSaved(BOOKS_KEY);
+    const savedMap = readSaved(RECORDS_KEY);
+    const oldRecords = readSaved("thuVienBorrowRecords");
+    if (Array.isArray(savedBooks)) legacyData.books = savedBooks;
+    if (savedMap && typeof savedMap === "object" && !Array.isArray(savedMap)) legacyData.recordsByUser = savedMap;
+    if (Array.isArray(oldRecords)) legacyData.records = oldRecords;
+    if (Object.keys(legacyData).length > 0) candidates.push({ data: legacyData, priority: 4 });
+    candidates.sort(function(a, b) {
+        const timeDifference = Number(a.data.updatedAt || 0) - Number(b.data.updatedAt || 0);
+        return timeDifference === 0 ? a.priority - b.priority : timeDifference;
+    });
+    const result = {};
+    let hasBooks = false;
+    let hasRecordsMap = false;
+    candidates.forEach(function(candidate) {
+        const data = candidate.data;
+        if (Array.isArray(data.books)) {
+            result.books = data.books;
+            hasBooks = true;
+        }
+        if (data.recordsByUser && typeof data.recordsByUser === "object" && !Array.isArray(data.recordsByUser)) {
+            if (!result.recordsByUser) result.recordsByUser = {};
+            mergeRecordMaps(result.recordsByUser, data.recordsByUser);
+            hasRecordsMap = true;
+        }
+        if (Array.isArray(data.records)) {
+            if (!result.recordsByUser) result.recordsByUser = {};
+            const oldRole = data.role || "reader";
+            const oldUser = String(data.userId || (oldRole === "admin" ? "admin" : "reader")).toLowerCase();
+            const oldKey = oldRole + ":" + oldUser;
+            result.recordsByUser[oldKey] = mergeRecordLists(result.recordsByUser[oldKey], data.records);
+            hasRecordsMap = true;
+        }
+        Object.keys(data).forEach(function(key) {
+            if (key === "books" || key === "recordsByUser" || key === "records") return;
+            result[key] = data[key];
+        });
+    });
+    if (!hasBooks) delete result.books;
+    if (!hasRecordsMap) delete result.recordsByUser;
+    syncBookStatusesWithRecords(result);
+    return result;
+}
+function persistSharedData(data) {
+    if (!data.recordsByUser || typeof data.recordsByUser !== "object" || Array.isArray(data.recordsByUser)) {
+        data.recordsByUser = {};
+    }
+    syncBookStatusesWithRecords(data);
+    data.updatedAt = Date.now();
+    try { localStorage.setItem(SHARED_DATA_KEY, JSON.stringify(data)); } catch (error) {}
+    if (Array.isArray(data.books)) {
+        try { localStorage.setItem(BOOKS_KEY, JSON.stringify(data.books)); } catch (error) {}
+    }
+    try { localStorage.setItem(RECORDS_KEY, JSON.stringify(data.recordsByUser)); } catch (error) {}
+    window.name = SHARED_PREFIX + JSON.stringify(data);
+    return data;
 }
 function setRole(role, userId) {
-    const sharedData = readSharedData();
+    const sharedData = readSharedData() || {};
     const cleanUserId = String(userId || (role === "admin" ? "admin" : "reader")).trim().toLowerCase();
-    const candidates = getSharedCandidates();
-    const maps = candidates.map(function(data) { return data.recordsByUser; });
-    maps.push(readSaved(RECORDS_KEY));
-    sharedData.recordsByUser = mergeRecordsMaps.apply(null, maps);
-    if (Array.isArray(sharedData.records)) {
-        const oldRole = sharedData.role || role;
-        const oldUserId = String(sharedData.userId || cleanUserId).trim().toLowerCase();
-        const oldKey = oldRole + ":" + oldUserId;
-        if (!Array.isArray(sharedData.recordsByUser[oldKey])) {
-            sharedData.recordsByUser[oldKey] = sharedData.records;
-        }
-        delete sharedData.records;
-    }
-    const currentKey = role + ":" + cleanUserId;
-    if (!Array.isArray(sharedData.recordsByUser[currentKey])) {
-        sharedData.recordsByUser[currentKey] = [];
-    }
     if (!Array.isArray(sharedData.books)) {
         const savedBooks = readSaved(BOOKS_KEY);
         if (Array.isArray(savedBooks)) sharedData.books = savedBooks;
     }
+    if (!sharedData.recordsByUser || typeof sharedData.recordsByUser !== "object" || Array.isArray(sharedData.recordsByUser)) {
+        sharedData.recordsByUser = {};
+    }
+    mergeRecordMaps(sharedData.recordsByUser, readSaved(RECORDS_KEY));
+    if (Array.isArray(sharedData.records)) {
+        const oldRole = sharedData.role || role;
+        const oldUserId = String(sharedData.userId || cleanUserId).trim().toLowerCase();
+        const oldKey = oldRole + ":" + oldUserId;
+        sharedData.recordsByUser[oldKey] = mergeRecordLists(sharedData.recordsByUser[oldKey], sharedData.records);
+        delete sharedData.records;
+    }
+    const currentKey = role + ":" + cleanUserId;
+    if (!Array.isArray(sharedData.recordsByUser[currentKey])) {
+        const oldRecords = readSaved(OLD_RECORDS_KEY);
+        sharedData.recordsByUser[currentKey] = Array.isArray(oldRecords) ? oldRecords : [];
+    }
     sharedData.role = role;
     sharedData.userId = cleanUserId;
-    sharedData.savedAt = Date.now();
-    syncBookStatuses(sharedData);
+    syncBookStatusesWithRecords(sharedData);
+    persistSharedData(sharedData);
     try { sessionStorage.setItem(ROLE_KEY, role); } catch (error) {}
     try { localStorage.setItem(ROLE_KEY, role); } catch (error) {}
     try { sessionStorage.setItem(USER_KEY, cleanUserId); } catch (error) {}
     try { localStorage.setItem(USER_KEY, cleanUserId); } catch (error) {}
-    try { localStorage.setItem(RECORDS_KEY, JSON.stringify(sharedData.recordsByUser)); } catch (error) {}
-    if (Array.isArray(sharedData.books)) {
-        try { localStorage.setItem(BOOKS_KEY, JSON.stringify(sharedData.books)); } catch (error) {}
-    }
-    saveSharedData(sharedData);
     return sharedData;
 }
 document.getElementById("loginForm").addEventListener("submit", function(event) {
@@ -137,7 +193,7 @@ document.getElementById("loginForm").addEventListener("submit", function(event) 
     const pass = document.getElementById("password").value.trim();
     const errorMsg = document.getElementById("errorMsg");
     if (user === "" || pass === "") {
-        errorMsg.textContent = "Vui lòng nhập đầy đủ thông tin!";
+        errorMsg.textContent = "Vui lÃ²ng nháº­p Ä‘áº§y Ä‘á»§ thÃ´ng tin!";
         return;
     }
     let role = "reader";
@@ -147,9 +203,9 @@ document.getElementById("loginForm").addEventListener("submit", function(event) 
         role = "admin";
         destination = "admin.html";
         accountId = "admin";
-        alert("Đăng nhập thành công với admin!");
+        alert("ÄÄƒng nháº­p thÃ nh cÃ´ng vá»›i admin!");
     } else {
-        alert("Đăng nhập thành công!");
+        alert("ÄÄƒng nháº­p thÃ nh cÃ´ng!");
     }
     const sharedData = setRole(role, accountId);
     const nextPage = new URL(destination, window.location.href);
