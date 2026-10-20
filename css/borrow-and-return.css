@@ -47,7 +47,6 @@ body {
 .logout-link {
     margin-top: auto;
 }
-
 .nav-link:hover,
 .nav-link.active {
     background-color: #3498db;
@@ -108,7 +107,6 @@ body {
     color: #2c3e50;
     font-size: 18px;
 }
-
 .book-card p {
     margin-top: 5px;
     color: #53636d;

@@ -47,7 +47,6 @@ body {
 .logout-link {
     margin-top: auto;
 }
-
 .nav-link:hover,
 .nav-link.active {
     background-color: #3498db;

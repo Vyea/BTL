@@ -38,7 +38,6 @@ nav a:hover,
 nav a.active {
     color: #3498db;
 }
-
 .btn-login {
     background: #3498db;
     padding: 6px 12px;
@@ -146,7 +145,6 @@ footer {
     position: relative;
     isolation: isolate;
     overflow: hidden;
-
     background:
         radial-gradient(
             circle at 12% 20%,
@@ -172,7 +170,6 @@ footer {
     border-radius: 50%;
     pointer-events: none;
 }
-
 .hero-section::before {
     width: 300px;
     height: 300px;
@@ -180,7 +177,6 @@ footer {
     right: -60px;
     background: rgba(52, 152, 219, 0.09);
 }
-
 .hero-section::after {
     width: 220px;
     height: 220px;
@@ -191,4 +187,3 @@ footer {
 .hero-section > * {
     position: relative;
 }
-
